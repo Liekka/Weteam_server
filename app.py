@@ -13,8 +13,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 @app.route('/add_user', methods=['POST'])
 def add_user():
     """使用于Post方法，用于向数据库中增加用户"""
+    # 首先取出需要的参数
     student_id = request.values.get('student_id')
     username = request.values.get('username')
+    attended_course_ids = request.values.get('attended_course_ids')
+    profile_photo = request.values.get('profile_photo')
+
+    # 需要判断是否是学生
     if request.values.get('is_teacher') == '0':
         is_teacher = 0
     elif request.values.get('is_teacher') == '1':
@@ -22,8 +27,7 @@ def add_user():
     else:
         error = "is_teacher is neither 0 or 1", 400
         return error
-    attended_course_ids = request.values.get('attended_course_ids')
-    profile_photo = request.values.get('profile_photo')
+    # 增加新的用户
     u = User(student_id, username, is_teacher, profile_photo, attended_course_ids)
     error = u.add_user()
     return error
@@ -31,8 +35,11 @@ def add_user():
 
 @app.route('/get_user', methods=['GET'])
 def get_user():
+    """根据学工号返回用户的信息"""
+    # 从url中取出所需参数
     student_id = request.values.get('student_id')
     u = User.query.filter(User.student_id == student_id).first()
+    # 判断是否存在该用户，并返回response
     if u is None:
         return "Cannot find such a student", 400
     else:
@@ -47,9 +54,11 @@ def delete_user():
 @app.route('/modify_attended_course', methods=['POST'])
 def modify_attended_course():
     """更改用户加入或创建的课程信息"""
+    # 从url中取出所需参数
     student_id = request.values.get('student_id')
     attended_course_ids = request.values.get('attended_course_ids')
     u = User.query.filter(User.student_id == student_id).first()
+    # 判断是否存在该用户，并返回response
     if u is None:
         return "Cannot find such a student", 400
     else:
@@ -64,6 +73,7 @@ def modify_attended_course():
 @app.route('/add_team', methods=['POST'])
 def add_team():
     """向数据库中增加队伍"""
+    # 从url中取出所需参数
     course_id = int(request.values.get('course_id'))
     leader_id = request.values.get('leader_id')
     team_info = request.values.get('team_info')
@@ -75,6 +85,7 @@ def add_team():
         return 'Don\'t have such a course'
 
     team = Team(course_id, leader_id, team_info, max_team, available_team, team_members_id)
+    # 确定这门课中，该队长没有创建过其他课程
     if Team.query.filter((team.course_id == Team.course_id) &
                          (team.leader_id == Team.leader_id)).first() is None:
         db.session.add(team)
@@ -87,8 +98,10 @@ def add_team():
 @app.route('/get_team', methods=['GET'])
 def get_team():
     """获取队伍信息"""
+    # 从url中取出所需参数
     team_id = request.values.get('team_id')
     team = Team.query.filter(team_id == Team.team_id).first()
+    # 确定存在这门课程
     if team is None:
         return "Cannot find such a team", 400
     else:
@@ -98,8 +111,10 @@ def get_team():
 @app.route('/delete_team', methods=['POST'])
 def delete_team():
     """删除队伍,解散队伍的同时，必须同时更改Course中所有对应学生的student_id和team_id"""
+    # 从url中取出所需参数
     team_id = request.values.get('team_id')
     team = Team.query.filter(team_id == Team.team_id).first()
+    # 如果不存在这门课程，则返回报错
     if team is None:
         return "Cannot find such a team", 400
     else:
@@ -113,18 +128,23 @@ def delete_team():
 
 @app.route('/modify_team', methods=['POST'])
 def modify_team():
+    """增删队伍中的成员或修改队长人选"""
+    # 从url中取出所需参数
     team_id = request.values.get('team_id')
     leader_id = request.values.get('leader_id')
     team_members_id = request.values.get('team_members_id')
     team = Team.query.filter(team_id == Team.team_id).first()
+    # 如果不存在这门课程，则返回报错
     if team is None:
         return "Cannot find such a team", 400
     else:
         # if need to change team leader
         if leader_id != 'None':
             team.leader_id = leader_id
+        # 修改队伍成员列表
         team.team_members_id = team_members_id
         temp = team.get_members_id()
+        # 如果队伍中的人都被删掉了，报错
         if temp is None:
             return "At least 1 member is required", 400
         team.available_team = team.max_team - len(temp)
@@ -137,6 +157,8 @@ def modify_team():
 
 @app.route('/add_course', methods=['POST'])
 def add_course():
+    """教师新建课程"""
+    # 从url中取出所需参数
     teacher_id = request.values.get('teacher_id')
     team_ids = request.values.get('team_ids')
     student_ids = request.values.get('student_ids')
@@ -149,6 +171,7 @@ def add_course():
     min_team = request.values.get('min_team')
     course = Course(teacher_id, course_info, name, course_time, start_time,
                     end_time, max_team, min_team, student_ids, team_ids)
+    # 确定该老师在同一课程时间段没有其他课程
     if Course.query.filter((course.teacher_id == Course.teacher_id)
                            & (name == Course.name) &
                            (course_time == Course.course_time)).first() is None:
@@ -161,9 +184,12 @@ def add_course():
 
 @app.route('/modify_course_info', methods=['POST'])
 def modify_course_info():
+    """修改课程信息功能"""
+    # 从url中取出所需参数
     course_id = request.values.get('course_id')
     course_info = request.values.get('course_info')
     course = Course.query.filter(course_id == Course.course_id).first()
+    # 确定是否存在该课程
     if course is None:
         return 'Don\'t have such a course', 400
     else:
@@ -175,12 +201,16 @@ def modify_course_info():
 
 @app.route('/get_course', methods=['GET'])
 def get_course():
+    """根据课程id取得课程信息，或是进行模糊搜索"""
+    # 从url中取出所需参数
     course_id = request.values.get('course_id')
+    # 可以不通过课程id，而是通过课程名来取得课程信息
     if course_id is None:
         name = request.values.get('name')
         if name is None :
             return 'Don\'t have enough information', 400
         else:
+            # 进行模糊搜索，匹配课程名并返回所有匹配的课程
             course = Course.query.filter((name == Course.name)).all()
             if course is not None:
                 for i in range(len(course)):
@@ -200,6 +230,8 @@ def get_course():
 
 @app.route('/delete_course', methods=['POST'])
 def delete_course():
+    """根据课程id删除课程功能"""
+    # 从url中取出所需参数
     course_id = request.values.get('course_id')
     course = Course.query.filter(course_id == Course.course_id).first()
     if course is None:
@@ -225,6 +257,7 @@ def delete_course():
                 a = user.attended_course_ids
                 a = a.split('@')
                 a.remove(course_id)
+                # 如果学生只参加了这门课程，那么他的参加课程列表字段就要被赋值为None
                 if a is None:
                     user.attended_course_ids = 'None'
                 else:
@@ -239,9 +272,11 @@ def delete_course():
 @app.route('/course_modify_student', methods=['POST'])
 def course_modify_student():
     """对于课程增删学生"""
+    # 从url中取出所需参数
     course_id = request.values.get('course_id')
     student_ids = request.values.get('student_ids')
     course = Course.query.filter(course_id == Course.course_id).first()
+    # 确定存在该课程
     if course is None:
         return 'Cannot find such a course', 400
     else:
@@ -254,9 +289,11 @@ def course_modify_student():
 @app.route('/modify_team_ids', methods=['POST'])
 def modify_team_ids():
     """更改课程中的队伍列表"""
+    # 从url中取出所需参数
     course_id = request.values.get('course_id')
     team_ids = request.values.get('team_ids')
     course = Course.query.filter(course_id == Course.course_id).first()
+    # 确定存在该课程
     if course is None:
         return 'Cannot find such a course', 400
     else:

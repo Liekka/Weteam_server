@@ -11,7 +11,7 @@ db = SQLAlchemy()
 
 
 class User(db.Model):
-    """用户信息表"""
+    """用户表"""
     __tablename__ = 'users'
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     student_id = db.Column(db.String(20), unique=True, nullable=False)
@@ -76,6 +76,7 @@ class Team(db.Model):
         self.team_members_id = team_members_id
 
     def __json__(self):
+        """以JSON的形式返回当前用户的数据"""
         info = {
             "team_id": self.team_id,
             "course_id": self.course_id,
@@ -92,6 +93,7 @@ class Team(db.Model):
         return str(self.team_members_id).split('@')
 
     def delete_team(self, course):
+        """删除指定的队伍"""
         # 得到student_ids
         student_ids_dict = eval(course.student_ids)
         team_member = self.get_members_id()
@@ -142,6 +144,7 @@ class Course(db.Model):
         self.student_ids = student_ids
 
     def __json__(self):
+        """以json的格式返回课程信息"""
         info = {
             "course_id": self.course_id,
             "teacher_id": self.teacher_id,
